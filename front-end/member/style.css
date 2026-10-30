@@ -1,0 +1,161 @@
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 40px;
+  background-color: #f9f9f9;
+  color: #333;
+  display: flex;
+  justify-content: center;
+}
+
+.card {
+  background: #fff;
+  padding: 25px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 450px;
+}
+
+/* 목록 화면처럼 표가 들어가는 카드 */
+.card.wide {
+  max-width: 1000px;
+}
+
+h2 {
+  border-bottom: 2px solid #007BFF;
+  padding-bottom: 8px;
+  color: #007BFF;
+  margin-top: 0;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+input,
+select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+button {
+  background-color: #007BFF;
+  color: white;
+  border: none;
+  padding: 12px;
+  width: 100%;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+button:disabled {
+  background-color: #b5b5b5;
+  cursor: not-allowed;
+}
+
+/* 화면 이동 메뉴 */
+.nav {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.nav a {
+  color: #666;
+  text-decoration: none;
+}
+
+.nav a.active {
+  color: #007BFF;
+  font-weight: bold;
+}
+
+/* 목록 화면 */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.toolbar label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-weight: normal;
+}
+
+.toolbar select,
+.toolbar button,
+.pager button {
+  width: auto;
+  padding: 8px 14px;
+  font-size: 14px;
+}
+
+.status {
+  min-height: 20px;
+  margin: 8px 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+th,
+td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+  white-space: nowrap;
+}
+
+th {
+  background: #f1f6ff;
+  color: #007BFF;
+}
+
+.pager {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+.hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #888;
+}
+
+.upload-form {
+  margin-bottom: 20px;
+}

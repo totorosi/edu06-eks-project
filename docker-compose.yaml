@@ -1,0 +1,63 @@
+services:
+  app-mysql:
+    # apparmor 보안 프로필을 비활성화하여 컨테이너가 호스트 시스템의 NFS 볼륨에 접근할 수 있도록 설정
+    # security_opt: ["apparmor:unconfined"]
+    image: mysql:8.4
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    container_name: mysql-container
+    environment:
+      # DB 비밀번호는 .env 파일의 DB_PASSWORD 로 정함 (필수, .env.example 을 복사해서 만듦)
+      # 1. 루트 비밀번호 (필수)
+      MYSQL_ROOT_PASSWORD: "${DB_PASSWORD:?DB_PASSWORD 를 .env 파일에 정하세요 (.env.example 참고)}"
+      # 2. 초기 데이터베이스 생성 (선택)
+      MYSQL_DATABASE: "testdb"
+      # 3. 일반 사용자 계정 생성 (API 는 이 계정으로 접속)
+      MYSQL_USER: "${DB_USER:-appuser}"
+      MYSQL_PASSWORD: "${DB_PASSWORD:?DB_PASSWORD 를 .env 파일에 정하세요 (.env.example 참고)}"
+      # 4. 시간대 설정 (컨테이너 시스템 레벨)
+      TZ: "Asia/Seoul"
+    ports:
+      # 내 PC 에서만 접속 가능 (외부 공개 안 함)
+      - "127.0.0.1:3306:3306"
+    volumes:
+      # 데이터 보존 + 최초 기동 시 members 테이블 자동 생성
+      - mysql-data:/var/lib/mysql
+      - ./database/query.sql:/docker-entrypoint-initdb.d/query.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - bridge-network
+
+  app-fastapi:
+    # Docker Hub 에 push 할 때는 .env 의 FASTAPI_IMAGE 를 <내 Docker Hub ID>/fastapi:member-api 로 정함
+    image: ${FASTAPI_IMAGE:-member-api:local}
+    build:
+      context: ./back-end/member # FastAPI Dockerfile이 있는 현재 경로
+      dockerfile: Dockerfile
+    container_name: fastapi-container
+    restart: always
+    environment:
+      DB_USER: "${DB_USER:-appuser}"
+      DB_PASSWORD: "${DB_PASSWORD:?DB_PASSWORD 를 .env 파일에 정하세요 (.env.example 참고)}"
+      # API 를 호출할 수 있는 프론트 주소 (쉼표로 구분). 기본값은 내 PC 에서 5500 포트로 연 프론트
+      CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:5500,http://127.0.0.1:5500}"
+    depends_on:
+      app-mysql:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    networks:
+      - bridge-network
+
+# #############################################################
+volumes:
+  mysql-data:
+
+networks:
+  bridge-network:
+    driver: bridge

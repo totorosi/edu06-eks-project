@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>회원 관리 시스템 - 회원 목록</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <div class="card wide">
+    <nav class="nav">
+      <a href="member_append.html">회원 등록</a>
+      <a href="member_list.html" class="active">회원 목록</a>
+      <a href="files.html">파일</a>
+    </nav>
+
+    <h2>회원 목록</h2>
+
+    <div class="toolbar">
+      <label>
+        한 번에 보기
+        <select id="pageSize">
+          <option value="10">10명</option>
+          <option value="20" selected>20명</option>
+          <option value="50">50명</option>
+        </select>
+      </label>
+      <button type="button" id="reload">새로고침</button>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>번호</th>
+            <th>이름</th>
+            <th>이메일</th>
+            <th>생년월일</th>
+            <th>성별</th>
+            <th>전화번호</th>
+            <th>주소</th>
+            <th>상태</th>
+            <th>가입일시</th>
+          </tr>
+        </thead>
+        <tbody id="memberRows"></tbody>
+      </table>
+    </div>
+
+    <div class="pager">
+      <button type="button" id="prev">이전</button>
+      <span id="pageInfo"></span>
+      <button type="button" id="next">다음</button>
+    </div>
+  </div>
+
+  <script src="common.js"></script>
+  <script>
+    const GENDER_LABEL = { M: "남성", F: "여성", OTHER: "기타" };
+    let offset = 0;
+
+    function pageSize() {
+      return Number(document.getElementById("pageSize").value);
+    }
+
+    function setStatus(text) {
+      document.getElementById("status").textContent = text;
+    }
+
+    // 서버에서 받은 값은 textContent 로만 넣어서 화면에서 코드로 실행되지 않게 한다
+    function addCell(row, text) {
+      const td = document.createElement("td");
+      td.textContent = text || "-";
+      row.appendChild(td);
+    }
+
+    function render(members) {
+      const tbody = document.getElementById("memberRows");
+      tbody.replaceChildren();
+      members.forEach(function (m) {
+        const tr = document.createElement("tr");
+        addCell(tr, String(m.id));
+        addCell(tr, m.name);
+        addCell(tr, m.email);
+        addCell(tr, m.birth_date);
+        addCell(tr, GENDER_LABEL[m.gender] || m.gender);
+        addCell(tr, m.phone);
+        addCell(tr, m.address);
+        addCell(tr, m.status);
+        addCell(tr, m.created_at);
+        tbody.appendChild(tr);
+      });
+    }
+
+    // 회원 목록 조회 (${API_BASE_URL}/member/list?limit=&offset=)
+    async function loadMembers() {
+      const limit = pageSize();
+      setStatus("불러오는 중...");
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/member/list?limit=${limit}&offset=${offset}`);
+        const result = await response.json();
+
+        if (!response.ok) {
+          setStatus("조회 실패: " + errorDetail(result));
+          return;
+        }
+
+        render(result.data);
+        setStatus(result.data.length === 0 ? "표시할 회원이 없습니다." : "");
+        document.getElementById("pageInfo").textContent = `${offset / limit + 1} 페이지`;
+        document.getElementById("prev").disabled = offset === 0;
+        document.getElementById("next").disabled = result.data.length < limit;
+      } catch (error) {
+        console.error("목록 조회 실패:", error);
+        setStatus("서버 통신 중 오류가 발생했습니다.");
+      }
+    }
+
+    document.getElementById("pageSize").addEventListener("change", function () {
+      offset = 0;
+      loadMembers();
+    });
+    document.getElementById("reload").addEventListener("click", loadMembers);
+    document.getElementById("prev").addEventListener("click", function () {
+      offset = Math.max(0, offset - pageSize());
+      loadMembers();
+    });
+    document.getElementById("next").addEventListener("click", function () {
+      offset += pageSize();
+      loadMembers();
+    });
+
+    loadMembers();
+  </script>
+</body>
+
+</html>

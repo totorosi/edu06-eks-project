@@ -1,0 +1,16 @@
+# 이 파일을 terraform.tfvars 로 복사해서 값을 채우세요 (terraform.tfvars 는 git 에 올리지 않음)
+# 같은 값을 TF_VAR_<이름> 환경변수로 넘겨도 됩니다. 예: export TF_VAR_name_prefix=myname
+# 아래는 모두 예시용 가짜 값입니다.
+
+# 리소스 이름 접두사: 모든 리소스 Name 이 <접두사>-<리소스명> 이 됨
+name_prefix = "myname"
+
+# 모든 리소스에 자동으로 붙는 태그 (Owner 는 RDS 지표를 찾는 Alloy 설정에도 쓰임)
+owner_tag   = "my-owner"
+project_tag = "my-project"
+
+# EKS API 에 접속할 수 있는 IP. 내 공인 IP 를 넣으세요.
+eks_api_allowed_cidrs = ["203.0.113.10/32"]
+
+# fastapi 이미지 (back-end/member 를 빌드해서 Docker Hub 에 push 한 이미지)
+fastapi_image = "your-dockerhub-id/fastapi:member-api"

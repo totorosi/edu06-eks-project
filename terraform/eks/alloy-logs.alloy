@@ -1,0 +1,138 @@
+// ═════════════════════════════════════════
+// 로깅
+// ═════════════════════════════════════════
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+// ═════════════════════════════════════════
+// 공통: Loki로 전송
+// ═════════════════════════════════════════
+loki.write "default" {
+  endpoint {
+    url = "http://loki-gateway.monitoring.svc.cluster.local/loki/api/v1/push"
+  }
+  external_labels = {
+    cluster = sys.env("CLUSTER_NAME"),
+  }
+}
+
+// ═════════════════════════════════════════
+// ① Pod 로그 (Nginx 포함)
+// ═════════════════════════════════════════
+
+// 이 Alloy가 실행 중인 노드의 Pod만 대상으로 (DaemonSet 중복 수집 방지)
+discovery.kubernetes "pods" {
+  role = "pod"
+  selectors {
+    role  = "pod"
+    field = "spec.nodeName=" + sys.env("NODE_NAME")
+  }
+}
+
+// Kubernetes 정보를 Loki 라벨로 정리
+discovery.relabel "pods" {
+  targets = discovery.kubernetes.pods.targets
+
+  rule {
+    source_labels = ["__meta_kubernetes_namespace"]
+    target_label  = "namespace"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_name"]
+    target_label  = "pod"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_container_name"]
+    target_label  = "container"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_node_name"]
+    target_label  = "node"
+  }
+  // app 라벨: 'app' 라벨 사용, 'app.kubernetes.io/name'이 있으면 그 값으로 덮어씀
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_app"]
+    target_label  = "app"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+    regex         = "(.+)"
+    target_label  = "app"
+  }
+  // job = 네임스페이스/컨테이너
+  rule {
+    source_labels = ["namespace", "container"]
+    separator     = "/"
+    target_label  = "job"
+  }
+  // 노드의 실제 로그 파일 경로: /var/log/pods/<ns>_<pod>_<uid>/<container>/*.log
+  // (local.file_match 는 __path__ 라벨을 읽고, 폴더 이름 앞의 <ns>_<pod>_ 는 와일드카드(*)로 건너뜀)
+  rule {
+    source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+    separator     = "/"
+    replacement   = "/var/log/pods/*$1/*.log"
+    target_label  = "__path__"
+  }
+}
+
+// 경로 패턴에 맞는 실제 로그 파일 찾기
+local.file_match "pods" {
+  path_targets = discovery.relabel.pods.output
+}
+
+// 로그 파일 읽기
+loki.source.file "pods" {
+  targets    = local.file_match.pods.targets
+  forward_to = [loki.process.pods.receiver]
+}
+
+// 로그 가공
+loki.process "pods" {
+  // containerd(CRI) 로그 형식 파싱: "<시간> <stdout|stderr> <F|P> <메시지>"
+  stage.cri {}
+
+  // stdout / stderr 를 라벨로 (Nginx: stdout=액세스 로그, stderr=에러 로그)
+  stage.labels {
+    values = { stream = "" }
+  }
+
+  // 파일명 라벨 제거 (로그 파일이 교체될 때마다 값이 바뀌어 불필요한 스트림 증가)
+  stage.label_drop {
+    values = ["filename"]
+  }
+
+  forward_to = [loki.write.default.receiver]
+}
+
+// ═════════════════════════════════════════
+// ② 노드 로그 (systemd journal)
+// ═════════════════════════════════════════
+loki.relabel "journal" {
+  forward_to = []
+
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    target_label  = "unit"
+  }
+  rule {
+    source_labels = ["__journal_priority_keyword"]
+    target_label  = "level"
+  }
+  rule {
+    source_labels = ["__journal__transport"]
+    target_label  = "transport"
+  }
+}
+
+loki.source.journal "node" {
+  path          = "/var/log/journal"
+  max_age       = "12h"
+  relabel_rules = loki.relabel.journal.rules
+  labels        = {
+    job  = "node/journal",
+    node = sys.env("NODE_NAME"),
+  }
+  forward_to    = [loki.write.default.receiver]
+}

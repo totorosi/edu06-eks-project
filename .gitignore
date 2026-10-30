@@ -1,0 +1,22 @@
+# 상태·계획 파일 (계정번호, 리소스 ID, 설정값이 들어 있음)
+*.tfstate
+*.tfstate.*
+tfplan*
+
+# terraform init 이 내려받는 플러그인 (수 GB)
+.terraform/
+
+# 내 공인 IP 같은 개인 값 (값을 가짜로 채운 *.tfvars.example 은 올림)
+*.tfvars
+
+# S3 상태 버킷 이름을 담은 파일 (backend.hcl.example 만 올림)
+backend.hcl
+
+# PDF 의 curl 명령으로 terraform/eks/lambda/ 에 직접 내려받는 실행 파일
+terraform/eks/lambda/*.zip
+
+# docker compose 용 비밀번호 파일 (.env.example 만 올림)
+.env
+
+# 올리지 않기로 한 파일 (Grafana 관리자 비밀번호 예시값이 들어 있음)
+/values.yaml

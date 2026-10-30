@@ -1,0 +1,4 @@
+# 이 파일을 backend.hcl 로 복사해서 값을 채우세요 (backend.hcl 은 git 에 올리지 않음)
+# terraform init -backend-config=backend.hcl
+# 상태 파일을 저장할 S3 버킷: Terraform 밖에서 미리 만들어 둔 버킷 (버전 관리 켜기 권장)
+bucket = "your-tfstate-bucket"

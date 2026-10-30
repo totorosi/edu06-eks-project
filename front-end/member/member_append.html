@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>회원 관리 시스템 - 회원 등록</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <div class="card">
+    <nav class="nav">
+      <a href="member_append.html" class="active">회원 등록</a>
+      <a href="member_list.html">회원 목록</a>
+      <a href="files.html">파일</a>
+    </nav>
+
+    <h2>회원 등록</h2>
+    <form id="memberForm">
+      <div class="form-group">
+        <label>이름 *</label>
+        <input type="text" id="name" required maxlength="50">
+      </div>
+      <div class="form-group">
+        <label>이메일 *</label>
+        <input type="email" id="email" required maxlength="100">
+      </div>
+      <div class="form-group">
+        <label>비밀번호 *</label>
+        <input type="password" id="passwd" required maxlength="255">
+      </div>
+      <div class="form-group">
+        <label>생년월일</label>
+        <input type="date" id="birth_date">
+      </div>
+      <div class="form-group">
+        <label>성별</label>
+        <select id="gender">
+          <option value="">선택 안 함</option>
+          <option value="M">남성 (M)</option>
+          <option value="F">여성 (F)</option>
+          <option value="OTHER">기타 (OTHER)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>전화번호</label>
+        <input type="text" id="phone" maxlength="20" placeholder="010-0000-0000">
+      </div>
+      <div class="form-group">
+        <label>주소</label>
+        <input type="text" id="address" maxlength="255">
+      </div>
+      <button type="submit">등록하기</button>
+    </form>
+  </div>
+
+  <script src="common.js"></script>
+  <script>
+    // 회원 등록 폼 제출 이벤트 (${API_BASE_URL}/member/append)
+    document.getElementById("memberForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      const formData = {
+        name: document.getElementById("name").value,
+        email: document.getElementById("email").value,
+        passwd: document.getElementById("passwd").value,
+        birth_date: document.getElementById("birth_date").value || null,
+        gender: document.getElementById("gender").value || null,
+        phone: document.getElementById("phone").value || null,
+        address: document.getElementById("address").value || null,
+        status: "ACTIVE"
+      };
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/member/append`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData)
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          alert("회원이 성공적으로 등록되었습니다!");
+          document.getElementById("memberForm").reset();
+        } else {
+          alert("등록 실패: " + errorDetail(result));
+        }
+      } catch (error) {
+        console.error("등록 요청 실패:", error);
+        alert("서버 통신 중 오류가 발생했습니다.");
+      }
+    });
+  </script>
+</body>
+
+</html>

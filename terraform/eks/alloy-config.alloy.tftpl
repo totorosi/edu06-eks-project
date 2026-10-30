@@ -1,0 +1,252 @@
+// ═════════════════════════════════════════════
+// 로깅
+// ═════════════════════════════════════════════
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+// ═════════════════════════════════════════════
+// ① CloudWatch Exporter
+// ═════════════════════════════════════════════
+prometheus.exporter.cloudwatch "aws" {
+  sts_region = "${region}"
+
+  // AWS 태그를 메트릭 라벨(tag_*)로 추가
+  discovery_exported_tags = {
+    "AWS/ApplicationELB" = ["ingress.k8s.aws/stack"],
+    "AWS/RDS"            = ["Project"],
+    "AWS/EC2"            = ["eks:nodegroup-name"],
+  }
+
+  // ───────── Ingress ALB ─────────
+  discovery {
+    type        = "AWS/ApplicationELB"
+    regions     = ["${region}"]
+    search_tags = { "elbv2.k8s.aws/cluster" = "${cluster_name}" }
+
+    metric {
+      name       = "RequestCount"
+      statistics = ["Sum"]
+      period     = "1m"
+      length     = "5m"
+    }
+    metric {
+      name       = "HTTPCode_Target_2XX_Count"
+      statistics = ["Sum"]
+      period     = "1m"
+      length     = "5m"
+    }
+    metric {
+      name       = "HTTPCode_Target_4XX_Count"
+      statistics = ["Sum"]
+      period     = "1m"
+      length     = "5m"
+    }
+    metric {
+      name       = "HTTPCode_Target_5XX_Count"
+      statistics = ["Sum"]
+      period     = "1m"
+      length     = "5m"
+    }
+    metric {
+      name       = "HTTPCode_ELB_5XX_Count"
+      statistics = ["Sum"]
+      period     = "1m"
+      length     = "5m"
+    }
+    metric {
+      name       = "TargetResponseTime"
+      statistics = ["Average", "Maximum"]
+      period     = "1m"
+      length     = "5m"
+    }
+    metric {
+      name       = "ActiveConnectionCount"
+      statistics = ["Sum"]
+      period     = "1m"
+      length     = "5m"
+    }
+    metric {
+      name       = "NewConnectionCount"
+      statistics = ["Sum"]
+      period     = "1m"
+      length     = "5m"
+    }
+    metric {
+      name       = "RejectedConnectionCount"
+      statistics = ["Sum"]
+      period     = "1m"
+      length     = "5m"
+    }
+    metric {
+      name       = "ProcessedBytes"
+      statistics = ["Sum"]
+      period     = "1m"
+      length     = "5m"
+    }
+    metric {
+      name       = "HealthyHostCount"
+      statistics = ["Average"]
+      period     = "1m"
+      length     = "5m"
+    }
+    metric {
+      name       = "UnHealthyHostCount"
+      statistics = ["Average"]
+      period     = "1m"
+      length     = "5m"
+    }
+  }
+
+  // ───────── RDS (<접두사>-mysql) ─────────
+  // 강사님 설정은 Project 태그로 찾지만 공용 계정이라 다른 학생 DB 가 섞일 수 있어 Owner 태그로 거름
+  discovery {
+    type        = "AWS/RDS"
+    regions     = ["${region}"]
+    search_tags = { "Owner" = "${owner_tag}" }
+
+    metric {
+      name       = "CPUUtilization"
+      statistics = ["Average"]
+      period     = "1m"
+      length     = "5m"
+    }
+    metric {
+      name       = "DatabaseConnections"
+      statistics = ["Average"]
+      period     = "1m"
+      length     = "5m"
+    }
+    metric {
+      name       = "FreeableMemory"
+      statistics = ["Average"]
+      period     = "1m"
+      length     = "5m"
+    }
+    metric {
+      name       = "FreeStorageSpace"
+      statistics = ["Average"]
+      period     = "1m"
+      length     = "5m"
+    }
+    metric {
+      name       = "ReadIOPS"
+      statistics = ["Average"]
+      period     = "1m"
+      length     = "5m"
+    }
+    metric {
+      name       = "WriteIOPS"
+      statistics = ["Average"]
+      period     = "1m"
+      length     = "5m"
+    }
+    metric {
+      name       = "ReadLatency"
+      statistics = ["Average"]
+      period     = "1m"
+      length     = "5m"
+    }
+    metric {
+      name       = "WriteLatency"
+      statistics = ["Average"]
+      period     = "1m"
+      length     = "5m"
+    }
+    metric {
+      name       = "NetworkReceiveThroughput"
+      statistics = ["Average"]
+      period     = "1m"
+      length     = "5m"
+    }
+    metric {
+      name       = "NetworkTransmitThroughput"
+      statistics = ["Average"]
+      period     = "1m"
+      length     = "5m"
+    }
+    metric {
+      name       = "DiskQueueDepth"
+      statistics = ["Average"]
+      period     = "1m"
+      length     = "5m"
+    }
+    metric {
+      name       = "SwapUsage"
+      statistics = ["Average"]
+      period     = "1m"
+      length     = "5m"
+    }
+    metric {
+      name       = "ReplicaLag"
+      statistics = ["Average", "Maximum"]
+      period     = "1m"
+      length     = "5m"
+    }
+  }
+
+  // ───────── EKS 워커노드 (EC2, 기본 모니터링 5분 단위) ─────────
+  discovery {
+    type        = "AWS/EC2"
+    regions     = ["${region}"]
+    search_tags = { "eks:cluster-name" = "${cluster_name}" }
+
+    metric {
+      name       = "CPUUtilization"
+      statistics = ["Average"]
+      period     = "5m"
+      length     = "10m"
+    }
+    metric {
+      name       = "StatusCheckFailed"
+      statistics = ["Maximum"]
+      period     = "5m"
+      length     = "10m"
+    }
+    metric {
+      name       = "CPUCreditBalance"
+      statistics = ["Average"]
+      period     = "5m"
+      length     = "10m"
+    }
+  }
+}
+
+// ═════════════════════════════════════════════
+// ② Exporter 결과 수집 (1분 간격)
+// ═════════════════════════════════════════════
+prometheus.scrape "cloudwatch" {
+  targets         = prometheus.exporter.cloudwatch.aws.targets
+  scrape_interval = "1m"
+  scrape_timeout  = "55s"
+  forward_to      = [prometheus.remote_write.kps.receiver]
+}
+
+// ═════════════════════════════════════════════
+// ③ kube-prometheus-stack Prometheus로 전송
+// ═════════════════════════════════════════════
+prometheus.remote_write "kps" {
+  endpoint {
+    url = "http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090/api/v1/write"
+  }
+}
+
+// ═════════════════════════════════════════
+// Kubernetes Events → Loki
+// (이 Alloy 는 Deployment 1개라 클러스터 전체 이벤트를 한 번만 수집함)
+// ═════════════════════════════════════════
+loki.source.kubernetes_events "events" {
+  job_name   = "kubernetes-events"
+  log_format = "logfmt"
+  forward_to = [loki.write.events.receiver]
+}
+
+loki.write "events" {
+  endpoint {
+    url = "http://loki-gateway.monitoring.svc.cluster.local/loki/api/v1/push"
+  }
+  external_labels = {
+    cluster = "${cluster_name}",
+  }
+}
